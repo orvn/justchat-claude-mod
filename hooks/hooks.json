@@ -1,0 +1,4 @@
+{
+  "description": "Chat mode: steers Claude to discussion and blocks file writes while on",
+  "modules": ["./register.tsx"]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "justchat",
+  "owner": { "name": "orvn" },
+  "plugins": [{ "name": "justchat", "source": "./" }]
+}

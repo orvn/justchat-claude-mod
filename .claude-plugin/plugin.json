@@ -1,0 +1,7 @@
+{
+  "name": "justchat",
+  "version": "1.0.0",
+  "description": "A /justchat mode where Claude supresses actions like writing code things through instead of writing code in favor of just chatting until told otherwise",
+  "author": { "name": "orvn" },
+  "types": "./types/index.d.ts"
+}

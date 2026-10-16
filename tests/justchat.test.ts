@@ -52,6 +52,15 @@ test('chat mode adds the instruction, blocks writes and prompts after replies', 
   const write = await $.tool.call({ tool: 'Bash', command: 'rm -rf dist' } as any)
   expect(write.isError ?? write.deny !== undefined).toBe(true)
 
+  const mcp = await $.tool.call({ tool: 'mcp__drive__update_file', fileId: 'x' } as any)
+  expect(mcp.isError ?? mcp.deny !== undefined).toBe(true)
+
+  const monitor = await $.tool.call({ tool: 'Monitor', command: 'rm -rf dist' } as any)
+  expect(monitor.isError ?? monitor.deny !== undefined).toBe(true)
+
+  const readFile = await $.tool.call({ tool: 'Read', file_path: '/work/a.ts' } as any)
+  expect(readFile.text).toBe('ran')
+
   const read = await $.tool.call({ tool: 'Bash', command: 'git log --oneline' } as any)
   expect(read.text).toBe('ran')
 

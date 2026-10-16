@@ -51,3 +51,14 @@ export const isReadOnlyCommand = (command: string) => {
 
   return stripped.split(/&&|\|\||[|;\n]/).every(isSafeSegment)
 }
+
+// Tools that only read or chat (anything not listed is refused)
+export const READ_TOOLS = new Set([
+  'Read', 'Grep', 'Glob', 'LSP', 'WebSearch', 'WebFetch', 'ToolSearch',
+  'AskUserQuestion', 'Agent', 'Skill', 'ListMcpResourcesTool',
+  'ReadMcpResourceTool', 'ReadMcpResourceDirTool', 'TaskGet', 'TaskList',
+  'ListAgents', 'ListSkills', 'ListPlugins', 'SearchSkills',
+])
+
+export const isAllowedCall = (tool: string, command?: string) =>
+  tool === 'Bash' ? command !== undefined && isReadOnlyCommand(command) : READ_TOOLS.has(tool)

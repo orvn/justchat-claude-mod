@@ -2,13 +2,11 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import { copy } from './copy'
-import { isReadOnlyCommand } from './readonly'
+import { isAllowedCall } from './readonly'
 
 const isOn = atom({ plugin: 'justchat', key: 'isOn' } as const, false)
 const isAsking = atom({ plugin: 'justchat', key: 'isAsking' } as const, false)
 const hasJustLeft = atom({ plugin: 'justchat', key: 'hasJustLeft' } as const, false)
-
-const WRITE_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit'])
 
 const enter = async ($: EngineInterface) => {
   await update($, isOn, () => true)
@@ -79,14 +77,11 @@ export const register: Register = on => {
     if (!(await read($, isOn))) {
       return next(e)
     }
-    if (WRITE_TOOLS.has(e.tool)) {
-      return { deny: copy.denyWrite(e.tool) }
-    }
-    if (e.tool === 'Bash' && !isReadOnlyCommand(e.command)) {
-      return { deny: copy.denyBash }
+    if (e.tool === 'Bash') {
+      return isAllowedCall(e.tool, e.command) ? next(e) : { deny: copy.denyBash }
     }
 
-    return next(e)
+    return isAllowedCall(e.tool) ? next(e) : { deny: copy.denyTool(e.tool) }
   }).catch(($, e, next) =>
     next.called ? next(e) : { deny: 'justchat: its write guard failed, so the call is blocked.' },
   )

@@ -16,8 +16,8 @@ export const copy = {
   off: 'Chat mode off: back to writing code',
   alreadyOff: 'Just chat mode is already off',
   alreadyOn: 'Just chat mode is already on',
-  denyWrite: (tool: string) =>
-    `justchat: chat mode is on, so ${tool} is blocked. Discuss the change instead, or ask the user to leave chat mode with /justchat off.`,
+  denyTool: (tool: string) =>
+    `justchat: chat mode is on, so only reading tools run and ${tool} is blocked. Discuss instead, or ask the user to leave chat mode with /justchat off.`,
   denyBash:
     'justchat: chat mode is on, so only read-only shell commands run. Discuss instead, or ask the user to leave chat mode with /justchat off.',
 }

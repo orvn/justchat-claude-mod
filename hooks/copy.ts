@@ -1,5 +1,13 @@
+const PERSIST_TAG_ON = '[justchat:on]'
+const PERSIST_TAG_OFF = '[justchat:off]'
+
 export const copy = {
+  persistTagOn: PERSIST_TAG_ON,
+  persistTagOff: PERSIST_TAG_OFF,
+  persistMarkOn: `${PERSIST_TAG_ON} The user turned on chat mode.`,
+  persistMarkOff: `${PERSIST_TAG_OFF} The user turned off chat mode.`,
   instruction: [
+    PERSIST_TAG_ON,
     'The user turned on chat mode with /justchat. They want a conversation, not code.',
     'Discuss, explain, compare, ask questions and give opinions. Keep answers conversational.',
     'Do not write, edit or create files, do not run commands that change anything, unless the user explicitly asks to exit just chat mode.',
@@ -7,7 +15,7 @@ export const copy = {
     'Short code snippets are fine to display only when they illustrate a point, but not to write to a file.',
     'If the user asks you to make a change, tell them to leave chat mode first with /justchat off or the "Back to code" button.',
   ].join(' '),
-  ended: 'The user left chat mode. Return to normal unrestricted behavior: writing code, editing files and running commands are once again permitted.',
+  ended: `${PERSIST_TAG_OFF} The user left chat mode. Return to normal unrestricted behavior: writing code, editing files and running commands are once again permitted.`,
   afterReply: '💬 Keep typing to chat, or leave with /justchat off',
   band: 'chat mode',
   keep: 'Keep chatting',

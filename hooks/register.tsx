@@ -7,17 +7,64 @@ import { isAllowedCall } from './readonly'
 const isOn = atom({ plugin: 'justchat', key: 'isOn' } as const, false)
 const isAsking = atom({ plugin: 'justchat', key: 'isAsking' } as const, false)
 const hasJustLeft = atom({ plugin: 'justchat', key: 'hasJustLeft' } as const, false)
+const persistedSessionId = atom({ plugin: 'justchat', key: 'persistedSessionId' } as const, null)
+
+// Newest marker in the transcript decides the mode
+const isOnPersisted = async ($: EngineInterface) => {
+  const messages = await $.session.messages()
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const text = messages[i]?.text ?? ''
+    const on = text.lastIndexOf(copy.persistTagOn)
+    const off = text.lastIndexOf(copy.persistTagOff)
+
+    if (on !== -1 || off !== -1) {
+      return on > off
+    }
+  }
+
+  return false
+}
+
+// Interrupted session clears into a new id, rebuilds from the conversation
+const persistSession = async ($: EngineInterface) => {
+  try {
+    const id = await $.session.id()
+
+    if ((await read($, persistedSessionId)) === id) {
+      return
+    }
+
+    const restored = await isOnPersisted($)
+    await update($, persistedSessionId, () => id)
+    await update($, isOn, () => restored)
+    await update($, isAsking, () => false)
+    await update($, hasJustLeft, () => false)
+  } catch {
+    // Keep the current state rather than drop the hook
+  }
+}
+
+const persistMode = async ($: EngineInterface, text: string) => {
+  try {
+    await $.session.append({ message: { type: 'user', content: [{ type: 'text', text }] } })
+  } catch {
+    // Mid-turn appends can be refused, the next prompt's context carries the tag anyway
+  }
+}
 
 const enter = async ($: EngineInterface) => {
   await update($, isOn, () => true)
   await update($, isAsking, () => false)
   await update($, hasJustLeft, () => false)
+  await persistMode($, copy.persistMarkOn)
 }
 
 const leave = async ($: EngineInterface) => {
   await update($, isOn, () => false)
   await update($, isAsking, () => false)
   await update($, hasJustLeft, () => true)
+  await persistMode($, copy.persistMarkOff)
 }
 
 export const register: Register = on => {
@@ -27,11 +74,13 @@ export const register: Register = on => {
       description: 'Talk things through without Claude writing code',
       argumentHint: '[off | message]',
     })
+    await persistSession($)
 
     return next(e)
   })
 
   on('command.run', { command: 'justchat' }, async ($, e) => {
+    await persistSession($)
     const arg = e.args.trim()
     const wasOn = await read($, isOn)
 
@@ -58,6 +107,8 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
+    await persistSession($)
+
     if (await read($, hasJustLeft)) {
       await update($, hasJustLeft, () => false)
 
@@ -74,6 +125,8 @@ export const register: Register = on => {
   })
 
   on('tool.call', async ($, e, next) => {
+    await persistSession($)
+
     if (!(await read($, isOn))) {
       return next(e)
     }
@@ -87,6 +140,7 @@ export const register: Register = on => {
   )
 
   on('turn.complete', async ($, e, next) => {
+    await persistSession($)
     const done = await next(e)
 
     if (e.agentId !== undefined || e.reason !== 'answer' || !(await read($, isOn))) {
@@ -98,7 +152,19 @@ export const register: Register = on => {
     return { ...done, text: copy.afterReply }
   })
 
+  on('session.compact', async ($, e, next) => {
+    const done = await next(e)
+
+    if (await read($, isOn)) {
+      await persistMode($, copy.persistMarkOn)
+    }
+
+    return done
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    await persistSession($)
+
     if (e.props.hasSurvey || !(await read($, isOn))) {
       return next(e)
     }

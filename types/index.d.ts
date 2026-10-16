@@ -1,7 +1,7 @@
+export type ChatFlag = boolean
+
 declare module 'claude-code' {
   interface PluginState {
-    justchat: { isOn: boolean; isAsking: boolean; hasJustLeft: boolean }
+    justchat: { isOn: ChatFlag; isAsking: ChatFlag; hasJustLeft: ChatFlag }
   }
 }
-
-export {}

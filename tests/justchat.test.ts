@@ -27,6 +27,8 @@ test('chat mode adds the instruction, blocks writes and prompts after replies', 
   const contexts: (readonly string[] | undefined)[] = []
 
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.messages', () => ({ value: [] }) as any)
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('prompt.submit', (_, e) => {
     contexts.push(e.context)
@@ -82,6 +84,8 @@ test('chat mode adds the instruction, blocks writes and prompts after replies', 
 
 test('off when already off says so', async ($, on) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.messages', () => ({ value: [] }) as any)
   on('command.register', (_, e) => ({ value: { command: e.name } }))
 
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
@@ -90,6 +94,8 @@ test('off when already off says so', async ($, on) => {
 
 test('band shows the choice after a reply and Back to code leaves', async ($, on) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.messages', () => ({ value: [] }) as any)
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('turn.complete', (_, e) => ({ text: e.answer }))
   on('ui.render', ($, e) => {
@@ -115,4 +121,64 @@ test('band shows the choice after a reply and Back to code leaves', async ($, on
     expect(await ui.find({ key: 'back' })).toBeUndefined()
     await ui.unmount()
   }
+})
+
+test('chat mode survives a switch to a new session id', async ($, on) => {
+  let id = 's1'
+  const transcript: { role: 'user'; text: string; toolUses: [] }[] = []
+  const contexts: (readonly string[] | undefined)[] = []
+
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: id }))
+  on('session.messages', () => ({ value: [...transcript] }) as any)
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('prompt.submit', (_, e) => {
+    contexts.push(e.context)
+    transcript.push({ role: 'user', text: [e.text, ...(e.context ?? [])].join('\n'), toolUses: [] })
+
+    return { text: e.text, context: e.context }
+  })
+  on('tool.call', () => ({ result: 'ran', text: 'ran' }) as any)
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await runCommand($, '')
+  await submit($, 'hi')
+
+  id = 's2'
+  await submit($, 'still chatting?')
+  expect(contexts.at(-1)?.[0]).toContain('[justchat:on]')
+
+  const edit = await $.tool.call({ tool: 'Edit', file_path: '/work/a.ts', old_string: 'a', new_string: 'b' } as any)
+  expect(edit.isError ?? edit.deny !== undefined).toBe(true)
+
+  await runCommand($, 'off')
+  await submit($, 'build it')
+  expect(contexts.at(-1)?.[0]).toContain('[justchat:off]')
+
+  id = 's3'
+  await submit($, 'next')
+  expect(contexts.at(-1)).toBeUndefined()
+
+  id = 's4'
+  transcript.length = 0
+  await submit($, 'after clear')
+  expect(contexts.at(-1)).toBeUndefined()
+})
+
+test('a failing history read keeps the current mode', async ($, on) => {
+  const contexts: (readonly string[] | undefined)[] = []
+
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('prompt.submit', (_, e) => {
+    contexts.push(e.context)
+
+    return { text: e.text, context: e.context }
+  })
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await runCommand($, '')
+  await submit($, 'hi')
+  expect(contexts.at(-1)?.[0]).toContain('[justchat:on]')
 })

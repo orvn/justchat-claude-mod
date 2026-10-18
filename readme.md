@@ -34,3 +34,52 @@ While chat mode is on:
 - A 💬 band above the prompt shows the mode, with a **Back to code** button
 - After each reply, a line under the answer reminds you how to continue or leave, and the band offers **Keep chatting**
 - The band's buttons answer `k` and `c` once the band has focus (ctrl+x tab or a click)
+
+
+## How it works
+
+`/justchat` supresses non-chat behavior in two ways:
+
+1. **Instruction:** Every prompt carries a hidden instruction: discuss, explain, compare, give opinions. No file edits, no state-changing commands, no implementation plans. Short snippets are fine when they illustrate a point
+
+2. **Blocking:** Instruction alone isn't a guarantee, so tools are allowlisted while chat mode is on:
+  - Allowed: Read, Grep, Glob, LSP, web search and fetch, tool search, MCP resource reads, task and agent lists, AskUserQuestion, Agent and Skill (their own calls are checked too)
+- Bash: only read-only commands, such as `ls`, `cat`, `grep`, `find` without `-delete` or `-exec`, `sed` without `-i`, and read-only `git`. Redirects, command substitution and unknown commands are refused
+- Everything else is refused, including Edit, Write, Monitor, Workflow and every MCP tool (MCP tools give no read-only signal before they run, so read-only ones are blocked too)
+
+When a call is refused, Claude is told why and asked to discuss instead or to suggest leaving chat mode
+
+Chat mode persists through changing session IDs, which can happen in a single chat.
+
+## Development
+
+Run it from a clone for one session. 
+Run `./scripts/setup.sh` once after cloning.
+
+```sh
+claude --plugin-dir .
+```
+
+Saving a file reloads the mod in place, this can be checked with:
+```sh
+claude plugin validate .
+claude plugin test .
+```
+
+### Structure
+- `hooks/register.tsx`- Hooks, incl. command, tool guard, reply line, band, etc.
+- `hooks/copy.ts`: Prompt instruction
+- `hooks/readonly.ts`: Allowlist and the read-only shell check
+- `types/index.d.ts`: Session state contract
+- `tests/`: Tests (run by `claude plugin test`)
+
+
+### Conventional Commits
+
+Commits must use a conventional prefix, `.githooks/` rejects anything else. Allowed types: `feat`, `fix`, `hotfix`, `refactor`, `style`, `chore`, `cleanup`, `perf`, `test`, `docs`, `content`
+
+`changelog.md` is generated with [git-cliff](https://git-cliff.org):
+
+```sh
+git cliff -o changelog.md
+```

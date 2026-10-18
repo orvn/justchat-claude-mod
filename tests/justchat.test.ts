@@ -112,6 +112,7 @@ test('band shows the choice after a reply and Back to code leaves', async ($, on
     await endTurn($)
 
     const ui = await $.ui.mount({ ...BAND, surface })
+    expect(await ui.find({ type: 'Text', text: 'CHAT MODE' })).toBeDefined()
     expect(await ui.find({ key: 'keep' })).toBeDefined()
 
     await ui.press({ key: 'keep' })
@@ -181,4 +182,29 @@ test('a failing history read keeps the current mode', async ($, on) => {
   await runCommand($, '')
   await submit($, 'hi')
   expect(contexts.at(-1)?.[0]).toContain('[justchat:on]')
+})
+
+test('the footer lists chat mode beside the other modes', async ($, on) => {
+  const seen: (readonly string[])[] = []
+
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.messages', () => ({ value: [] }) as any)
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('ui.render', ($, e) => {
+    seen.push((e.props as any).modes)
+    const { Box } = $.ui.resolve(e)
+
+    return h(Box, null)
+  })
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  const FOOTER = { plugin: 'justchat', component: 'SessionMode', props: { modes: ['auto mode on'] } } as const
+
+  await (await $.ui.mount({ ...FOOTER, surface: 'terminal' })).unmount()
+  expect(seen.at(-1)).toEqual(['auto mode on'])
+
+  await runCommand($, '')
+  await (await $.ui.mount({ ...FOOTER, surface: 'terminal' })).unmount()
+  expect(seen.at(-1)).toEqual(['💬 chat mode', 'auto mode on'])
 })

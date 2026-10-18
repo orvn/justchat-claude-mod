@@ -173,26 +173,50 @@ export const register: Register = on => {
     const asking = await read($, isAsking)
 
     return (
-      <Box gap={1}>
-        <Text color="cyan">💬 {copy.band}</Text>
-        {asking && (
+      <Box
+        borderStyle="round"
+        borderColor="suggestion"
+        paddingX={1}
+        justifyContent="space-between"
+        flexGrow={1}
+      >
+        <Box gap={1} flexShrink={1} overflow="hidden">
+          <Text bold color="inverseText" backgroundColor="suggestion" wrap="truncate">
+            {copy.band}
+          </Text>
+          <Text color="suggestion" wrap="truncate-end">
+            {copy.bandHint}
+          </Text>
+        </Box>
+        <Box gap={1} flexShrink={0}>
+          {asking && (
+            <Button
+              key="keep"
+              label={copy.keep}
+              hotkey="k"
+              onPress={() => update($, isAsking, () => false)}
+            />
+          )}
           <Button
-            key="keep"
-            label={copy.keep}
-            hotkey="k"
-            onPress={() => update($, isAsking, () => false)}
+            key="back"
+            label={copy.back}
+            hotkey="c"
+            onPress={async () => {
+              await leave($)
+              $.ui.toast(copy.off)
+            }}
           />
-        )}
-        <Button
-          key="back"
-          label={copy.back}
-          hotkey="c"
-          onPress={async () => {
-            await leave($)
-            $.ui.toast(copy.off)
-          }}
-        />
+        </Box>
       </Box>
     )
+  })
+  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    await persistSession($)
+
+    if (!(await read($, isOn))) {
+      return next(e)
+    }
+
+    return next({ ...e, props: { ...e.props, modes: [copy.footerMode, ...e.props.modes] } })
   })
 }
